@@ -141,7 +141,7 @@ if [[ -d ${REPO_DIR} ]]; then
     popd >/dev/null
   fi
 else
-  echo "Repo directory does ${REPO_DIR} not exist on local machine."
+  echo "Repo directory ${REPO_DIR} does not exist on local machine."
   echo "Cloning repository ${GIT_REPO}..."
 
   if [[ ${TEST_MODE:-x} == "x" ]]
