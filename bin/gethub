@@ -7,8 +7,8 @@
 UNAME_BIN=$(which uname)
 
 SRC_ROOT_WIN=${USERPROFILE}/source
-# TODO - is this a decent choice for Mac OS?
 SRC_ROOT_UNIX=${HOME}/.local/src
+# TODO - is this a decent choice for Mac OS?
 SRC_ROOT_MACOS=${HOME}/Library/Repos
 
 get_src_root() {
