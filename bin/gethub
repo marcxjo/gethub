@@ -6,10 +6,12 @@
 
 UNAME_BIN=$(which uname)
 
-SRC_ROOT_WIN=${USERPROFILE}/source
 SRC_ROOT_UNIX=${HOME}/.local/src
 # TODO - is this a decent choice for Mac OS?
 SRC_ROOT_MACOS=${HOME}/Library/Repos
+# Assume Unix path syntax since we're already assuming a Unix shell
+# TODO - is HOME set in all major Bash-based envs in Windows?
+SRC_ROOT_WIN=${HOME}/source
 
 get_src_root() {
   _kernel_name=$(uname -s)
