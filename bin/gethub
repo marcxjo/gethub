@@ -1,0 +1,153 @@
+#!/bin/sh
+
+#
+# gethub - conveniently clone/update repos in a directory tree
+#
+
+UNAME_BIN=$(which uname)
+
+SRC_ROOT_WIN=${USERPROFILE}/source
+# TODO - is this a decent choice for Mac OS?
+SRC_ROOT_UNIX=${HOME}/.local/src
+SRC_ROOT_MACOS=${HOME}/Library/Repos
+
+get_src_root() {
+  _kernel_name=$(uname -s)
+
+  case $_kernel_name in
+    # TODO - confirm that these options aren't total bullshit
+    Linux|BSD)
+      echo ${SRC_ROOT_UNIX}
+      ;;
+    Darwin)
+      echo ${SRC_ROOT_MACOS}
+      ;;
+    Microsoft)
+      echo ${SRC_ROOT_WIN}
+      ;;
+  esac
+}
+
+SRC_ROOT=$(get_src_root)
+GIT_BIN=$(which git)
+REPO_CONFIG_DIR=${REPO_CONFIG_DIR:-${HOME}/.config/gethub}
+
+# If test mode is specified, then don't clone or update
+# Just print the text output to demonstrate the resulting behavior
+TEST_MODE=""
+
+make_repo_subtree() {
+  local _segments=${@}
+  echo ${_segments} | sed 's| |\/|g'
+}
+
+# Environment overrides ########################################################
+
+# The directory structure overrides are provided for convenience, but if you
+# find yourself using them often, you may as well set new defaults
+while getopts :c:p:r:t o; do
+  case "$o" in
+    c) # Custom repo config
+      . ${REPO_CONFIG_DIR}/${OPTARG}.conf
+
+      shift 2
+      ;;
+    p) # Set (or override) repo prefix
+      _REPO_PREFIX=${OPTARG}
+
+      shift 2
+      ;;
+    r) # Override root source dir
+      _SRC_ROOT=${OPTARG}
+
+      shift 2
+      ;;
+    t) # Test mode - prints all messages without running any file I/O executions
+      TEST_MODE="1"
+
+      shift 1
+      ;;
+  esac
+done
+
+SRC_ROOT=${_SRC_ROOT:-$HOME/.local/src}
+
+# Default provider configs #####################################################
+
+case "$1" in
+  -a|--arch|--abs)
+    GIT_PROVIDER_URL="https://git.archlinux.org/"
+    REPO_PREFIX=arch
+
+    shift 1
+    ;;
+  -b|--bitbucket)
+    GIT_PROVIDER_URL="bitbucket:"
+    REPO_PREFIX=bitbucket
+
+    shift 1
+    ;;
+  -g|--github)
+    GIT_PROVIDER_URL="github:"
+    REPO_PREFIX=github
+
+    shift 1
+    ;;
+  -u|--aur)
+    GIT_PROVIDER_URL="https://aur.archlinux.org/"
+    REPO_PREFIX=aur
+
+    shift 1
+    ;;
+  -z|--ado)
+    # TODO - IIRC arg ${2} in this string is just a hard-coded sub-path "_git",
+    # but need to verify
+    GIT_PROVIDER_URL="azure-devops:v3/$2/"
+    REPO_PREFIX="dev.azure.com"
+
+    shift 2
+    ;;
+esac
+
+REPO_PREFIX="${_REPO_PREFIX:-${REPO_PREFIX}}"
+REPO_SUBTREE=$(make_repo_subtree ${@})
+GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}.git"
+
+if [[ "${REPO_PREFIX:-x}" == "x" ]]
+then
+  echo "Error: repo prefix not set."
+  echo "Must select a predefined repository or specify one via the -r switch."
+  exit 2
+fi
+
+REPO_DIR=${SRC_ROOT}/${REPO_PREFIX}/${REPO_SUBTREE}
+
+if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]
+then
+  echo "Creating root source directory at ${REPO_DIR}..."
+  mkdir -p ${SRC_ROOT}
+fi
+
+if [[ -d ${REPO_DIR} ]]; then
+  echo "Repo directory ${REPO_DIR} already exists on local machine."
+  echo "Updating local copy of repository ${GIT_REPO}..."
+
+  # TODO - these nested conditionals can be handled in a function with some
+  # finessing of the Git command input
+  if [[ ${TEST_MODE:-x} == "x" ]]
+  then
+    pushd ${REPO_DIR} >/dev/null
+    ${GIT_BIN} pull
+    popd >/dev/null
+  fi
+else
+  echo "Repo directory does ${REPO_DIR} not exist on local machine."
+  echo "Cloning repository ${GIT_REPO}..."
+
+  if [[ ${TEST_MODE:-x} == "x" ]]
+  then
+    ${GIT_BIN} clone ${@} ${GIT_REPO} ${REPO_DIR}
+  fi
+fi
+
+exit 0
