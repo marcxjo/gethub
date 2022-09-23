@@ -72,7 +72,7 @@ while getopts :c:p:r:t o; do
   esac
 done
 
-SRC_ROOT=${_SRC_ROOT:${SRC_ROOT}}
+SRC_ROOT=${_SRC_ROOT:-${SRC_ROOT}}
 
 # Default provider configs #####################################################
 
