@@ -24,8 +24,12 @@ get_src_root() {
     Darwin)
       echo ${SRC_ROOT_MACOS}
       ;;
-    Microsoft)
+    *_NT-*) # Works for MSYS2 and Git Bash
+            # TODO - need to investigate other Bash-based Windows envs
       echo ${SRC_ROOT_WIN}
+      ;;
+    *)      # Don't leave out illumos et al.
+      echo ${SRC_ROOT_UNIX}
       ;;
   esac
 }
