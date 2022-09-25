@@ -6,12 +6,12 @@
 
 UNAME_BIN=$(which uname)
 
-SRC_ROOT_UNIX=${HOME}/.local/src
+_SRC_ROOT_UNIX=${HOME}/.local/src
 # TODO - is this a decent choice for Mac OS?
-SRC_ROOT_MACOS=${HOME}/Library/Repos
+_SRC_ROOT_MACOS=${HOME}/Library/Repos
 # Assume Unix path syntax since we're already assuming a Unix shell
 # TODO - is HOME set in all major Bash-based envs in Windows?
-SRC_ROOT_WIN=${HOME}/source
+_SRC_ROOT_WIN=${HOME}/source
 
 get_src_root() {
   _kernel_name=$(uname -s)
@@ -19,22 +19,22 @@ get_src_root() {
   case $_kernel_name in
     # TODO - confirm that these options aren't total bullshit
     Linux|BSD)
-      echo ${SRC_ROOT_UNIX}
+      echo ${_SRC_ROOT_UNIX}
       ;;
     Darwin)
-      echo ${SRC_ROOT_MACOS}
+      echo ${_SRC_ROOT_MACOS}
       ;;
     *_NT-*) # Works for MSYS2 and Git Bash
             # TODO - need to investigate other Bash-based Windows envs
-      echo ${SRC_ROOT_WIN}
+      echo ${_SRC_ROOT_WIN}
       ;;
     *)      # Don't leave out illumos et al.
-      echo ${SRC_ROOT_UNIX}
+      echo ${_SRC_ROOT_UNIX}
       ;;
   esac
 }
 
-SRC_ROOT=$(get_src_root)
+_SRC_ROOT=$(get_src_root)
 GIT_BIN=$(which git)
 REPO_CONFIG_DIR=${REPO_CONFIG_DIR:-${HOME}/.config/gethub}
 
@@ -57,11 +57,11 @@ while getopts :c:p:r:t o; do
       . ${REPO_CONFIG_DIR}/${OPTARG}.conf
       ;;
     p) # Set (or override) repo prefix
-      _REPO_PREFIX=${OPTARG}
+      REPO_PREFIX=${OPTARG}
 
       ;;
     r) # Override root source dir
-      _SRC_ROOT=${OPTARG}
+      SRC_ROOT=${OPTARG}
 
       ;;
     t) # Test mode - prints all messages without running any file I/O executions
@@ -72,32 +72,32 @@ done
 
 shift $(( ${OPTIND} - 1 ))
 
-SRC_ROOT=${_SRC_ROOT:-${SRC_ROOT}}
+SRC_ROOT=${SRC_ROOT:-${_SRC_ROOT}}
 
 # Default provider configs #####################################################
 
 case "$1" in
   -a|--arch|--abs)
     GIT_PROVIDER_URL="https://git.archlinux.org/"
-    REPO_PREFIX=arch
+    _REPO_PREFIX=arch
 
     shift 1
     ;;
   -b|--bitbucket)
     GIT_PROVIDER_URL="bitbucket:"
-    REPO_PREFIX=bitbucket
+    _REPO_PREFIX=bitbucket
 
     shift 1
     ;;
   -g|--github)
     GIT_PROVIDER_URL="github:"
-    REPO_PREFIX=github
+    _REPO_PREFIX=github
 
     shift 1
     ;;
   -u|--aur)
     GIT_PROVIDER_URL="https://aur.archlinux.org/"
-    REPO_PREFIX=aur
+    _REPO_PREFIX=aur
 
     shift 1
     ;;
@@ -105,13 +105,13 @@ case "$1" in
     # TODO - IIRC arg ${2} in this string is just a hard-coded sub-path "_git",
     # but need to verify
     GIT_PROVIDER_URL="azure-devops:v3/$2/"
-    REPO_PREFIX="dev.azure.com"
+    _REPO_PREFIX="dev.azure.com"
 
     shift 2
     ;;
 esac
 
-REPO_PREFIX="${_REPO_PREFIX:-${REPO_PREFIX}}"
+REPO_PREFIX=${REPO_PREFIX:-${_REPO_PREFIX}}
 REPO_SUBTREE=$(make_repo_subtree ${@})
 GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}.git"
 
