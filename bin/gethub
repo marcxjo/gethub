@@ -67,6 +67,10 @@ while getopts :c:p:r:t o; do
       ;;
     t) # Test mode - prints all messages without running any file I/O executions
       TEST_MODE="1"
+
+      ;;
+    *)
+      break
       ;;
   esac
 done
