@@ -148,7 +148,7 @@ else
 
   if [[ ${TEST_MODE:-x} == "x" ]]
   then
-    ${GIT_BIN} clone ${@} ${GIT_REPO} ${REPO_DIR}
+    ${GIT_BIN} clone ${GIT_REPO} ${REPO_DIR}
   fi
 fi
 
