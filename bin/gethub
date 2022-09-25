@@ -10,6 +10,7 @@ _SRC_ROOT_UNIX=${HOME}/.local/src
 # TODO - is this a decent choice for Mac OS?
 _SRC_ROOT_MACOS=${HOME}/Library/Repos
 # Assume Unix path syntax since we're already assuming a Unix shell
+# (I.e., as opposed to sourcing ${USERPROFILE}, which uses Windows syntax)
 # TODO - is HOME set in all major Bash-based envs in Windows?
 _SRC_ROOT_WIN=${HOME}/source
 
@@ -77,31 +78,31 @@ SRC_ROOT=${SRC_ROOT:-${_SRC_ROOT}}
 # Default provider configs #####################################################
 
 case "$1" in
-  -a|--arch|--abs)
+  -a|--arch|--abs) # Arch Linux
     GIT_PROVIDER_URL="https://git.archlinux.org/"
     _REPO_PREFIX=arch
 
     shift 1
     ;;
-  -b|--bitbucket)
+  -b|--bitbucket) # Atlassian Bitbucket
     GIT_PROVIDER_URL="bitbucket:"
     _REPO_PREFIX=bitbucket
 
     shift 1
     ;;
-  -g|--github)
+  -g|--github) # Idk, some no-name up-and-comer...
     GIT_PROVIDER_URL="github:"
     _REPO_PREFIX=github
 
     shift 1
     ;;
-  -u|--aur)
+  -u|--aur) # Arch Linux User Repository
     GIT_PROVIDER_URL="https://aur.archlinux.org/"
     _REPO_PREFIX=aur
 
     shift 1
     ;;
-  -z|--ado)
+  -z|--ado) # Azure DevOps
     # TODO - IIRC arg ${2} in this string is just a hard-coded sub-path "_git",
     # but need to verify
     GIT_PROVIDER_URL="azure-devops:v3/$2/"
