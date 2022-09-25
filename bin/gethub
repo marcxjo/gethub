@@ -55,26 +55,22 @@ while getopts :c:p:r:t o; do
   case "$o" in
     c) # Custom repo config
       . ${REPO_CONFIG_DIR}/${OPTARG}.conf
-
-      shift 2
       ;;
     p) # Set (or override) repo prefix
       _REPO_PREFIX=${OPTARG}
 
-      shift 2
       ;;
     r) # Override root source dir
       _SRC_ROOT=${OPTARG}
 
-      shift 2
       ;;
     t) # Test mode - prints all messages without running any file I/O executions
       TEST_MODE="1"
-
-      shift 1
       ;;
   esac
 done
+
+shift $(( ${OPTIND} - 1 ))
 
 SRC_ROOT=${_SRC_ROOT:-${SRC_ROOT}}
 
