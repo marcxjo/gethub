@@ -70,12 +70,16 @@ while getopts :c:p:r:t o; do
 
       ;;
     *)
+      # Don't shift away the current option - it is most likely an input for the
+      # next loop
+      _LOOP_1_OFFSET=2
       break
       ;;
   esac
 done
 
-shift $(( ${OPTIND} - 1 ))
+LOOP_1_OFFSET=${_LOOP_1_OFFSET:-1}
+shift $(( ${OPTIND} - ${LOOP_1_OFFSET} ))
 
 SRC_ROOT=${SRC_ROOT:-${_SRC_ROOT}}
 
