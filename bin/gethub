@@ -225,13 +225,15 @@ case "$1" in
     shift 1
     ;;
   -b|--bitbucket) # Atlassian Bitbucket
-    _GIT_PROVIDER_URL="bitbucket:"
+    _GIT_PROVIDER_URL="https://bitbucket.org/"
+    _GIT_PROVIDER_SSH="bitbucket:"
     _REPO_PREFIX=bitbucket
 
     shift 1
     ;;
   -g|--github) # Idk, some no-name up-and-comer...
-    _GIT_PROVIDER_URL="github:"
+    _GIT_PROVIDER_URL="https://github.com/"
+    _GIT_PROVIDER_SSH="github:"
     _REPO_PREFIX=github
 
     shift 1
@@ -244,15 +246,29 @@ case "$1" in
     ;;
   -z|--ado) # Azure DevOps
     # TODO - need to verify that this is the URL format used for all ADO repos
-    _GIT_PROVIDER_URL="azure-devops:v3/_git/"
+    _GIT_PROVIDER_URL="https://dev.azure.com/v3/_git/"
+    _GIT_PROVIDER_SSH="azure-devops:v3/_git/"
     _REPO_PREFIX="dev.azure.com"
 
     shift 1
     ;;
 esac
 
+if [[ "${NO_SSH+x}" == "x" ]]
+then
+  unset _GIT_PROVIDER_SSH
+fi
+
+echo $_REPO_PREFIX
+echo $REPO_PREFIX
 REPO_PREFIX=${REPO_PREFIX:-${_REPO_PREFIX}}
-GIT_PROVIDER_URL=${GIT_PROVIDER_URL:-${_GIT_PROVIDER_URL}}
+
+# Prefer Git over SSH
+# if an SSH host is not set, then prefer the user's provided URL (which may
+# actually be an SSH host anyway)
+# Finally, fall back to HTTP(s)
+GIT_PROVIDER_URL=${_GIT_PROVIDER_SSH:-${GIT_PROVIDER_URL:-${_GIT_PROVIDER_URL}}}
+
 REPO_SUBTREE=$(make_repo_subtree ${@})
 GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}.git"
 
