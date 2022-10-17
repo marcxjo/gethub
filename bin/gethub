@@ -172,7 +172,7 @@ make_repo_subtree() {
 
 # The directory structure overrides are provided for convenience, but if you
 # find yourself using them often, you may as well set new defaults
-while getopts :c:g:hp:r:t o; do
+while getopts :c:hp:r:st o; do
   case "$o" in
     c) # Custom repo config
       . ${REPO_CONFIG_DIR}/${OPTARG}.conf
@@ -193,6 +193,10 @@ while getopts :c:g:hp:r:t o; do
       ;;
     r) # Override root source dir
       SRC_ROOT=${OPTARG}
+
+      ;;
+    s) # Disable SSH for providers that are assumed to use
+      NO_SSH="1"
 
       ;;
     t) # Test mode - prints all messages without running any file I/O executions
