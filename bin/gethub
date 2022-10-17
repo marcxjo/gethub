@@ -136,16 +136,20 @@ get_src_root() {
     # TODO - confirm that these options aren't total bullshit
     Linux|BSD)
       echo ${_SRC_ROOT_UNIX}
+
       ;;
     Darwin)
       echo ${_SRC_ROOT_MACOS}
+
       ;;
     *_NT-*) # Works for MSYS2 and Git Bash
             # TODO - need to investigate other Bash-based Windows envs
       echo ${_SRC_ROOT_WIN}
+
       ;;
     *)      # Don't leave out illumos et al.
       echo ${_SRC_ROOT_UNIX}
+
       ;;
   esac
 }
@@ -172,12 +176,15 @@ while getopts :c:g:hp:r:t o; do
   case "$o" in
     c) # Custom repo config
       . ${REPO_CONFIG_DIR}/${OPTARG}.conf
+
       ;;
     g) # Custom Git provider
       GIT_PROVIDER_URL="${OPTARG}/"
+
       ;;
     h) # Heeeeeelp!
       usage
+
       exit 0
       ;;
     p) # Set (or override) repo prefix
@@ -197,6 +204,7 @@ while getopts :c:g:hp:r:t o; do
       # Don't shift away the current option - it is most likely an input for the
       # next loop
       _LOOP_1_OFFSET=2
+
       break
       ;;
   esac
@@ -239,7 +247,7 @@ case "$1" in
     GIT_PROVIDER_URL="azure-devops:v3/_git/"
     _REPO_PREFIX="dev.azure.com"
 
-    shift 2
+    shift 1
     ;;
 esac
 
@@ -251,6 +259,7 @@ if [[ "${REPO_PREFIX:-x}" == "x" ]]
 then
   echo "Error: repo prefix not set."
   echo "Must select a predefined repository or specify one via the -r switch."
+
   exit 2
 fi
 
