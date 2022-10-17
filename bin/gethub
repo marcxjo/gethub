@@ -152,6 +152,7 @@ get_src_root() {
 
 _SRC_ROOT=$(get_src_root)
 GIT_BIN=$(which git)
+# TODO - need to set sane default config dirs for non-Linux OSes
 REPO_CONFIG_DIR=${REPO_CONFIG_DIR:-${HOME}/.config/gethub}
 
 # If test mode is specified, then don't clone or update
@@ -234,9 +235,8 @@ case "$1" in
     shift 1
     ;;
   -z|--ado) # Azure DevOps
-    # TODO - IIRC arg ${2} in this string is just a hard-coded sub-path "_git",
-    # but need to verify
-    GIT_PROVIDER_URL="azure-devops:v3/$2/"
+    # TODO - need to verify that this is the URL format used for all ADO repos
+    GIT_PROVIDER_URL="azure-devops:v3/_git/"
     _REPO_PREFIX="dev.azure.com"
 
     shift 2
