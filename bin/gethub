@@ -263,8 +263,6 @@ then
   unset _GIT_PROVIDER_SSH
 fi
 
-echo $_REPO_PREFIX
-echo $REPO_PREFIX
 REPO_PREFIX=${REPO_PREFIX:-${_REPO_PREFIX}}
 
 # Prefer Git over SSH
