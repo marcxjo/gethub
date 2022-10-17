@@ -219,32 +219,32 @@ SRC_ROOT=${SRC_ROOT:-${_SRC_ROOT}}
 
 case "$1" in
   -a|--arch|--abs) # Arch Linux
-    GIT_PROVIDER_URL="https://git.archlinux.org/"
+    _GIT_PROVIDER_URL="https://git.archlinux.org/"
     _REPO_PREFIX=arch
 
     shift 1
     ;;
   -b|--bitbucket) # Atlassian Bitbucket
-    GIT_PROVIDER_URL="bitbucket:"
+    _GIT_PROVIDER_URL="bitbucket:"
     _REPO_PREFIX=bitbucket
 
     shift 1
     ;;
   -g|--github) # Idk, some no-name up-and-comer...
-    GIT_PROVIDER_URL="github:"
+    _GIT_PROVIDER_URL="github:"
     _REPO_PREFIX=github
 
     shift 1
     ;;
   -u|--aur) # Arch Linux User Repository
-    GIT_PROVIDER_URL="https://aur.archlinux.org/"
+    _GIT_PROVIDER_URL="https://aur.archlinux.org/"
     _REPO_PREFIX=aur
 
     shift 1
     ;;
   -z|--ado) # Azure DevOps
     # TODO - need to verify that this is the URL format used for all ADO repos
-    GIT_PROVIDER_URL="azure-devops:v3/_git/"
+    _GIT_PROVIDER_URL="azure-devops:v3/_git/"
     _REPO_PREFIX="dev.azure.com"
 
     shift 1
@@ -252,6 +252,7 @@ case "$1" in
 esac
 
 REPO_PREFIX=${REPO_PREFIX:-${_REPO_PREFIX}}
+GIT_PROVIDER_URL=${GIT_PROVIDER_URL:-${_GIT_PROVIDER_URL}}
 REPO_SUBTREE=$(make_repo_subtree ${@})
 GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}.git"
 
