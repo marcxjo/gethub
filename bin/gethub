@@ -52,10 +52,13 @@ make_repo_subtree() {
 
 # The directory structure overrides are provided for convenience, but if you
 # find yourself using them often, you may as well set new defaults
-while getopts :c:p:r:t o; do
+while getopts :c:g:p:r:t o; do
   case "$o" in
     c) # Custom repo config
       . ${REPO_CONFIG_DIR}/${OPTARG}.conf
+      ;;
+    g) # Custom Git provider
+      GIT_PROVIDER_URL="${OPTARG}/"
       ;;
     p) # Set (or override) repo prefix
       REPO_PREFIX=${OPTARG}
