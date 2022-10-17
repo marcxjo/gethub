@@ -172,14 +172,10 @@ make_repo_subtree() {
 
 # The directory structure overrides are provided for convenience, but if you
 # find yourself using them often, you may as well set new defaults
-while getopts :c:hp:r:st o; do
+while getopts :c:hp:r:stv: o; do
   case "$o" in
     c) # Custom repo config
       . ${REPO_CONFIG_DIR}/${OPTARG}.conf
-
-      ;;
-    g) # Custom Git provider
-      GIT_PROVIDER_URL="${OPTARG}/"
 
       ;;
     h) # Heeeeeelp!
@@ -202,6 +198,10 @@ while getopts :c:hp:r:st o; do
     t) # Test mode - prints all messages without running any file I/O executions
       TEST_MODE="1"
       echo "Running in test mode - no syncing will occur"
+
+      ;;
+    v) # Custom Git provider
+      GIT_PROVIDER_URL="${OPTARG}/"
 
       ;;
     *)
