@@ -109,16 +109,6 @@ usage() {
       Assumes a repo from Arch Linux's Arch User Repository repo will be synced.
       The default repo prefix is \`aur\`.
 
-    -z|--ado
-      Assumes an Azure DevOps will be synced. The default repo prefix is
-      \`dev.azure.com\`.
-
-      Also assumes that the user has an SSH configured with a host setting named
-      \`azure-devops\`.
-
-      NOTE: this option has not yet been extensively investigated and may not
-      work for all ADO repos.
-
 
   REPO_SUBTREE_SEGMENTS
      The space-separated collection of subpaths in the repo's URL (excluding the
@@ -245,14 +235,6 @@ case "$1" in
   -u|--aur) # Arch Linux User Repository
     _GIT_PROVIDER_URL="https://aur.archlinux.org/"
     _REPO_PREFIX=aur
-
-    shift 1
-    ;;
-  -z|--ado) # Azure DevOps
-    # TODO - need to verify that this is the URL format used for all ADO repos
-    _GIT_PROVIDER_URL="https://dev.azure.com/v3/_git/"
-    _GIT_PROVIDER_SSH="azure-devops:v3/_git/"
-    _REPO_PREFIX="dev.azure.com"
 
     shift 1
     ;;
