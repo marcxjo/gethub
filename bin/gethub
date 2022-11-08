@@ -27,12 +27,12 @@ usage() {
 
   -c REPO_CONFIG_NAME
     Use an alternate repo .conf file to configure the repo sync settings. In
-    the current implementation, .conf files are particularly simple and contain
-    only two variables: GIT_PROVIDER_URL (explained below in the section for the
-    respective command-line option) and REPO_PREFIX.
+    the current implementation, .conf files are simple and contain at most two
+    variables: GIT_PROVIDER_URL and REPO_PREFIX (both explained below).
 
     .conf files are assumed to live in the repo config directory (which can be
-    overridden by passing the variable REPO_CONFIG_DIR into the script).
+    overridden by passing the variable REPO_CONFIG_DIR into the script). On all
+    systems, this currently defaults to \${HOME}/.config.
 
     This option assumes that the file suffix is not passed as part of the
     argument. When using the default config directory for Linux, passing
@@ -51,7 +51,8 @@ usage() {
 
     This is useful in case you have a use case that, for whatever reason,
     necessitates having access to an alternate copy of a Git repo.
-    Passing \`-r github-2\` will create the repo tree under \${SRC_ROOT}/github-2.
+    Passing \`-r github-2\` will create the repo tree under
+    \${SRC_ROOT}/github-2.
 
   -r SRC_ROOT
     Set an alternate source root directory for the repo to be synced. The source
@@ -75,11 +76,17 @@ usage() {
     passing these options, the only other required parameters are the URL path
     segments not included in the root provider URL (see REPO_SUBTREE_SEGMENTS).
 
-    Passing a sync default also sets a default repo prefix.
+    Passing a sync default also sets a default repo prefix. To override the repo
+    prefix or even the root provider URL (e.g., to substitute in an SSH host),
+    you can create a .conf file with the same name as the provider's default
+    prefix.
 
-    As noted below, some sync defaults assume a configured SSH key. In an
-    upcoming version, the script will be updated to fall back to HTTPS when a
-    matching SSH key is not configured.
+    If you want to override GitHub's root URL, create
+    \${HOME}/.config/github.conf with a populated GIT_PROVIDER_URL. (If you
+    don't want to override its repo prefix, simply don't set a REPO_PREFIX in
+    the file.) To clone or pull a GitHub repo, invoke the script normally,
+    passing the \`-g\` flag; you don't need to pass the \`-c\` flag. Your
+    overrides file will be picked up and applied with your overrides configured.
 
     -a|--arch|--abs
       Assumes an Arch Linx official svntogit PKGBUILD directory will be synced
@@ -95,14 +102,8 @@ usage() {
       Assumes a Bitbucket repo will be synced. The default repo prefix is
       \`bitbucket\`.
 
-      Also assumes that the user has an SSH configured with a host setting named
-      \`bitbucket\`.
-
     -g|--github
       Assumes a GitHub repo will be synced. The default repo prefix is
-      \`github\`.
-
-      Also assumes that the user has an SSH configured with a host setting named
       \`github\`.
 
     -u|--aur
@@ -144,6 +145,15 @@ get_src_root() {
   esac
 }
 
+try_source() {
+  local _filename=${1}
+
+  if [[ -f ${_filename} ]]
+  then
+    . ${_filename}
+  fi
+}
+
 _SRC_ROOT=$(get_src_root)
 GIT_BIN=$(which git)
 # TODO - need to set sane default config dirs for non-Linux OSes
@@ -162,10 +172,10 @@ make_repo_subtree() {
 
 # The directory structure overrides are provided for convenience, but if you
 # find yourself using them often, you may as well set new defaults
-while getopts :c:hp:r:stv: o; do
+while getopts :c:hp:r:tv: o; do
   case "$o" in
     c) # Custom repo config
-      . ${REPO_CONFIG_DIR}/${OPTARG}.conf
+      CONFIG_NAME=${OPTARG}
 
       ;;
     h) # Heeeeeelp!
@@ -178,11 +188,7 @@ while getopts :c:hp:r:stv: o; do
 
       ;;
     r) # Override root source dir
-      SRC_ROOT=${OPTARG}
-
-      ;;
-    s) # Disable SSH for providers that are assumed to use
-      NO_SSH="1"
+      SRC_ROOT=${ OPTARG}
 
       ;;
     t) # Test mode - prints all messages without running any file I/O executions
@@ -215,43 +221,42 @@ case "$1" in
   -a|--arch|--abs) # Arch Linux
     _GIT_PROVIDER_URL="https://git.archlinux.org/"
     _REPO_PREFIX=arch
+    CONFIG_NAME=arch
 
     shift 1
     ;;
   -b|--bitbucket) # Atlassian Bitbucket
     _GIT_PROVIDER_URL="https://bitbucket.org/"
-    _GIT_PROVIDER_SSH="bitbucket:"
     _REPO_PREFIX=bitbucket
+    CONFIG_NAME=bitbucket
 
     shift 1
     ;;
   -g|--github) # Idk, some no-name up-and-comer...
     _GIT_PROVIDER_URL="https://github.com/"
-    _GIT_PROVIDER_SSH="github:"
     _REPO_PREFIX=github
+    CONFIG_NAME=github
 
     shift 1
     ;;
   -u|--aur) # Arch Linux User Repository
     _GIT_PROVIDER_URL="https://aur.archlinux.org/"
     _REPO_PREFIX=aur
+    CONFIG_NAME=aur
 
     shift 1
     ;;
 esac
 
-if [[ "${NO_SSH+x}" == "x" ]]
+# If the user has set a custom config, or sync default overrides
+# (e.g., has configured SSH for GitHub), pull those settings in
+if [[ "${CONFIG_NAME:+x}" == "x" ]]
 then
-  unset _GIT_PROVIDER_SSH
+  try_source ${REPO_CONFIG_DIR}/${CONFIG_NAME}.conf
 fi
 
-REPO_PREFIX=${REPO_PREFIX:-${_REPO_PREFIX}}
-
-# Prefer Git over SSH
-# if an SSH host is not set, then prefer the user's provided URL (which may
-# actually be an SSH host anyway)
-# Finally, fall back to HTTP(s)
-GIT_PROVIDER_URL=${_GIT_PROVIDER_SSH:-${GIT_PROVIDER_URL:-${_GIT_PROVIDER_URL}}}
+REPO_PREFIX=${REPO_PREFIX-${_REPO_PREFIX}}
+GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
 
 REPO_SUBTREE=$(make_repo_subtree ${@})
 
