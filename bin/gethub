@@ -40,7 +40,7 @@ usage() {
   -c GIT_PROVIDER_CONFIG
     Use an alternate repo config to configure the repo sync settings. In
     the current implementation, .conf files are simple and contain at most two
-    variables: GIT_PROVIDER_URL and REPO_PREFIX (both explained below).
+    variables: GIT_PROVIDER_URL and PROVIDER_DIR (both explained below).
 
     .conf files are assumed to live in the repo config directory (which can be
     overridden by passing the variable CONFIG_DIR into the script). On all
@@ -55,11 +55,11 @@ usage() {
     (It's probably just easier to create a repo config file, but this option is
     included for convenience/testing/accommodating your masochism).
 
-  -p REPO_PREFIX
-    Set an alternate prefix directory for the repo to be synced. By default, the
-    repo prefix is the directory is the directory into which all repos for a
-    specific Git provider are grouped. (E.g., the default prefix for GitHub
-    repos, is \`github\`).
+  -p PROVIDER_DIR
+    Set an alternate provider directory directory (under the source root) for
+    the repo to be synced. By default, the provider directory is the directory
+    is the directory into which all repos for a specific Git provider are
+    grouped. (E.g., the default prefix for GitHub repos, is \`github\`).
 
     This is useful in case you have a use case that, for whatever reason,
     necessitates having access to an alternate copy of a Git repo.
@@ -73,9 +73,7 @@ usage() {
     the source root defaults to ${HOME}/.local/src on Linux.
 
     This is available in case you're running \`${0##*/}\` in an environment
-    where you don't have permission to change the default source root, or your
-    OS is incorrectly detected (e.g., because you're running an obscure Unix or
-    don't have \`uname\` installed).
+    where you don't have permission to change the default source root.
 
   -t
     Run \`${0##*/}\` in test mode. In this mode, all messages logged in the
@@ -88,21 +86,22 @@ usage() {
     options. When passing these options, the only other required parameters are
     the URL path segments not included in the root provider URL (see REPO_TREE).
 
-    Passing a default provider option also sets a default repo prefix. To
-    override the repo prefix or even the root provider URL (e.g., to substitute
-    in an SSH host definition), you can create a .conf file with the same name
-    as the provider's default prefix.
+    Passing a default provider option also sets a default provider directory. To
+    override the provider directory or even the root provider URL (e.g., to
+    substitute in an SSH host definition), you can create a .conf file with the
+    same name as the provider's default prefix.
 
     If you want to override GitHub's root URL, create
     \${HOME}/.config/github.conf with a populated GIT_PROVIDER_URL. (If you
-    don't want to override its repo prefix, simply don't set a REPO_PREFIX in
-    the file.) To clone or pull a GitHub repo, invoke the script normally,
-    passing the \`-g\` flag; you don't need to pass the \`-c\` flag. Your
-    overrides file will be picked up and applied with your overrides configured.
+    don't want to override its provider directory, simply don't set a
+    PROVIDER_DIR in the file.) To clone or pull a GitHub repo, invoke the script
+    normally, passing the \`-g\` flag; you don't need to pass the \`-c\` flag.
+    Your overrides file will be picked up and applied with your overrides
+    configured.
 
     -a|--arch|--abs
       Assumes an Arch Linx official svntogit PKGBUILD directory will be synced
-      via Git. The default repo prefix is \`arch\`.
+      via Git. The default provider directory is \`arch\`.
 
       NOTE: This option is very likely broken at the moment, as Arch Linux has
       recently migrated all build scripts to GitHub. Use Arch's \`asp\` package
@@ -111,16 +110,16 @@ usage() {
       repo.)
 
     -b|--bitbucket
-      Assumes a Bitbucket repo will be synced. The default repo prefix is
+      Assumes a Bitbucket repo will be synced. The default provider directory is
       \`bitbucket\`.
 
     -g|--github
-      Assumes a GitHub repo will be synced. The default repo prefix is
+      Assumes a GitHub repo will be synced. The default provider directory is
       \`github\`.
 
     -u|--aur
       Assumes a repo from Arch Linux's Arch User Repository repo will be synced.
-      The default repo prefix is \`aur\`.
+      The default provider directory is \`aur\`.
 
 
   REPO_TREE
@@ -161,8 +160,8 @@ while getopts :c:hp:r:tv: o; do
 
       exit 0
       ;;
-    p) # Set (or override) repo prefix
-      REPO_PREFIX=${OPTARG}
+    p) # Set (or override) provider directory
+      PROVIDER_DIR=${OPTARG}
 
       ;;
     r) # Override root source dir
@@ -197,28 +196,28 @@ shift $(( ${OPTIND} - ${LOOP_1_OFFSET} ))
 case "$1" in
   -a|--arch|--abs) # Arch Linux
     _GIT_PROVIDER_URL="https://git.archlinux.org/"
-    _REPO_PREFIX=arch
+    _PROVIDER_DIR=arch
     PROVIDER_CONFIG=arch
 
     shift 1
     ;;
   -b|--bitbucket) # Atlassian Bitbucket
     _GIT_PROVIDER_URL="https://bitbucket.org/"
-    _REPO_PREFIX=bitbucket
+    _PROVIDER_DIR=bitbucket
     PROVIDER_CONFIG=bitbucket
 
     shift 1
     ;;
   -g|--github) # Idk, some no-name up-and-comer...
     _GIT_PROVIDER_URL="https://github.com/"
-    _REPO_PREFIX=github
+    _PROVIDER_DIR=github
     PROVIDER_CONFIG=github
 
     shift 1
     ;;
   -u|--aur) # Arch Linux User Repository
     _GIT_PROVIDER_URL="https://aur.archlinux.org/"
-    _REPO_PREFIX=aur
+    _PROVIDER_DIR=aur
     PROVIDER_CONFIG=aur
 
     shift 1
@@ -232,7 +231,7 @@ then
   try_source ${CONFIG_DIR}/${PROVIDER_CONFIG}
 fi
 
-REPO_PREFIX=${REPO_PREFIX-${_REPO_PREFIX}}
+PROVIDER_DIR=${PROVIDER_DIR-${_PROVIDER_DIR}}
 GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
 
 REPO_SUBTREE=$(make_repo_subtree ${@})
@@ -246,15 +245,15 @@ fi
 
 GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}${REPO_SUFFIX}"
 
-if [[ "${REPO_PREFIX:-x}" == "x" ]]
+if [[ "${PROVIDER_DIR:-x}" == "x" ]]
 then
-  echo "Error: repo prefix not set."
+  echo "Error: provider directory not set."
   echo "Must select a predefined repository or specify one via the -r switch."
 
   exit 2
 fi
 
-REPO_DIR=${SRC_ROOT}/${REPO_PREFIX}/${REPO_SUBTREE}
+REPO_DIR=${SRC_ROOT}/${PROVIDER_DIR}/${REPO_SUBTREE}
 
 if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]
 then
