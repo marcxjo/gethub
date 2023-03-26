@@ -4,15 +4,28 @@
 # gethub - conveniently clone/update repos in a directory tree
 #
 
-UNAME_BIN=$(which uname)
+# Variables ####################################################################
 
-_SRC_ROOT_UNIX=${HOME}/.local/src
-# TODO - is this a decent choice for Mac OS?
-_SRC_ROOT_MACOS=${HOME}/Library/Repos
-# Assume Unix path syntax since we're already assuming a Unix shell
-# (I.e., as opposed to sourcing ${USERPROFILE}, which uses Windows syntax)
-# TODO - is HOME set in all major Bash-based envs in Windows?
-_SRC_ROOT_WIN=${HOME}/source
+GIT_BIN=$(which git 2>/dev/null)
+
+if [[ ! $GIT_BIN ]]
+then
+  echo "Error: unable to locate Git executable."
+  echo "Install Git or specify a path to an existing Git binary using the GIT_BIN"
+  echo "environment variable."
+
+  exit 1
+fi
+
+SCRIPT_CONFIG_DIR=${GETHUB_CONFIG_DIR:-"${HOME}/.config/gethub"}
+REPO_CONFIG_DIR="${CONFIG_DIR}/repos"
+SRC_ROOT=${GETHUB_SRC_ROOT:-"${HOME}/.local/src"}
+
+# If test mode is specified, then don't clone or update
+# Just print the text output to demonstrate the resulting behavior
+TEST_MODE=""
+
+# Functions ####################################################################
 
 usage() {
   cat <<EOF
@@ -120,31 +133,6 @@ usage() {
 EOF
 }
 
-get_src_root() {
-  _kernel_name=$(uname -s)
-
-  case $_kernel_name in
-    # TODO - confirm that these options aren't total bullshit
-    Linux|BSD)
-      echo ${_SRC_ROOT_UNIX}
-
-      ;;
-    Darwin)
-      echo ${_SRC_ROOT_MACOS}
-
-      ;;
-    *_NT-*) # Works for MSYS2 and Git Bash
-            # TODO - need to investigate other Bash-based Windows envs
-      echo ${_SRC_ROOT_WIN}
-
-      ;;
-    *)      # Don't leave out illumos et al.
-      echo ${_SRC_ROOT_UNIX}
-
-      ;;
-  esac
-}
-
 try_source() {
   local _filename=${1}
 
@@ -153,15 +141,6 @@ try_source() {
     . ${_filename}
   fi
 }
-
-_SRC_ROOT=$(get_src_root)
-GIT_BIN=$(which git)
-# TODO - need to set sane default config dirs for non-Linux OSes
-REPO_CONFIG_DIR=${REPO_CONFIG_DIR:-${HOME}/.config/gethub}
-
-# If test mode is specified, then don't clone or update
-# Just print the text output to demonstrate the resulting behavior
-TEST_MODE=""
 
 make_repo_subtree() {
   local _segments=${@}
