@@ -17,8 +17,7 @@ then
   exit 1
 fi
 
-SCRIPT_CONFIG_DIR=${GETHUB_CONFIG_DIR:-"${HOME}/.config/gethub"}
-REPO_CONFIG_DIR="${CONFIG_DIR}/repos"
+CONFIG_DIR=${GETHUB_CONFIG_DIR:-"${HOME}/.config/gethub"}
 SRC_ROOT=${GETHUB_SRC_ROOT:-"${HOME}/.local/src"}
 
 # If test mode is specified, then don't clone or update
@@ -44,7 +43,7 @@ usage() {
     variables: GIT_PROVIDER_URL and REPO_PREFIX (both explained below).
 
     .conf files are assumed to live in the repo config directory (which can be
-    overridden by passing the variable REPO_CONFIG_DIR into the script). On all
+    overridden by passing the variable CONFIG_DIR into the script). On all
     systems, this currently defaults to \${HOME}/.config.
 
     This option assumes that the file suffix is not passed as part of the
@@ -192,7 +191,6 @@ done
 LOOP_1_OFFSET=${_LOOP_1_OFFSET:-1}
 shift $(( ${OPTIND} - ${LOOP_1_OFFSET} ))
 
-SRC_ROOT=${SRC_ROOT:-${_SRC_ROOT}}
 
 # Default provider configs #####################################################
 
@@ -231,7 +229,7 @@ esac
 # (e.g., has configured SSH for GitHub), pull those settings in
 if [[ "${CONFIG_NAME:+x}" == "x" ]]
 then
-  try_source ${REPO_CONFIG_DIR}/${CONFIG_NAME}.conf
+  try_source ${CONFIG_DIR}/${CONFIG_NAME}
 fi
 
 REPO_PREFIX=${REPO_PREFIX-${_REPO_PREFIX}}
