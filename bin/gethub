@@ -32,13 +32,13 @@ usage() {
   ${0##*/} - A Convenient Git Repository Syncing Tool
 
   Usage:
-    ${0##*/} [ CONFIG_OPTIONS | SYNC_DEFAULTS ] REPO_SUBTREE_SEGMENTS
+    ${0##*/} [ CONFIG_OPTIONS | PROVIDER_OPT ] REPO_TREE
 
 
   CONFIG_OPTIONS
 
-  -c REPO_CONFIG_NAME
-    Use an alternate repo .conf file to configure the repo sync settings. In
+  -c GIT_PROVIDER_CONFIG
+    Use an alternate repo config to configure the repo sync settings. In
     the current implementation, .conf files are simple and contain at most two
     variables: GIT_PROVIDER_URL and REPO_PREFIX (both explained below).
 
@@ -82,16 +82,16 @@ usage() {
     default run mode are shown for debugging purposes, but no syncing occurs.
 
 
-  SYNC_DEFAULTS
+  PROVIDER_OPT
 
-    \`${0##*/}\` ships with a few major Git providers preconfigured. When
-    passing these options, the only other required parameters are the URL path
-    segments not included in the root provider URL (see REPO_SUBTREE_SEGMENTS).
+    \`${0##*/}\` ships with a few major Git providers preconfigured as shell
+    options. When passing these options, the only other required parameters are
+    the URL path segments not included in the root provider URL (see REPO_TREE).
 
-    Passing a sync default also sets a default repo prefix. To override the repo
-    prefix or even the root provider URL (e.g., to substitute in an SSH host),
-    you can create a .conf file with the same name as the provider's default
-    prefix.
+    Passing a default provider option also sets a default repo prefix. To
+    override the repo prefix or even the root provider URL (e.g., to substitute
+    in an SSH host definition), you can create a .conf file with the same name
+    as the provider's default prefix.
 
     If you want to override GitHub's root URL, create
     \${HOME}/.config/github.conf with a populated GIT_PROVIDER_URL. (If you
@@ -123,7 +123,7 @@ usage() {
       The default repo prefix is \`aur\`.
 
 
-  REPO_SUBTREE_SEGMENTS
+  REPO_TREE
      The space-separated collection of subpaths in the repo's URL (excluding the
      Git provider's base href). For a GitHub URL, this is usually a collection
      of 2 strings: the repo's username and the repo name itself. The \`.git\`
@@ -153,7 +153,7 @@ make_repo_subtree() {
 while getopts :c:hp:r:tv: o; do
   case "$o" in
     c) # Custom repo config
-      CONFIG_NAME=${OPTARG}
+      PROVIDER_CONFIG=${OPTARG}
 
       ;;
     h) # Heeeeeelp!
@@ -198,28 +198,28 @@ case "$1" in
   -a|--arch|--abs) # Arch Linux
     _GIT_PROVIDER_URL="https://git.archlinux.org/"
     _REPO_PREFIX=arch
-    CONFIG_NAME=arch
+    PROVIDER_CONFIG=arch
 
     shift 1
     ;;
   -b|--bitbucket) # Atlassian Bitbucket
     _GIT_PROVIDER_URL="https://bitbucket.org/"
     _REPO_PREFIX=bitbucket
-    CONFIG_NAME=bitbucket
+    PROVIDER_CONFIG=bitbucket
 
     shift 1
     ;;
   -g|--github) # Idk, some no-name up-and-comer...
     _GIT_PROVIDER_URL="https://github.com/"
     _REPO_PREFIX=github
-    CONFIG_NAME=github
+    PROVIDER_CONFIG=github
 
     shift 1
     ;;
   -u|--aur) # Arch Linux User Repository
     _GIT_PROVIDER_URL="https://aur.archlinux.org/"
     _REPO_PREFIX=aur
-    CONFIG_NAME=aur
+    PROVIDER_CONFIG=aur
 
     shift 1
     ;;
@@ -227,9 +227,9 @@ esac
 
 # If the user has set a custom config, or sync default overrides
 # (e.g., has configured SSH for GitHub), pull those settings in
-if [[ "${CONFIG_NAME:+x}" == "x" ]]
+if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]
 then
-  try_source ${CONFIG_DIR}/${CONFIG_NAME}
+  try_source ${CONFIG_DIR}/${PROVIDER_CONFIG}
 fi
 
 REPO_PREFIX=${REPO_PREFIX-${_REPO_PREFIX}}
