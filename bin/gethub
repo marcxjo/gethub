@@ -231,57 +231,62 @@ case "$1" in
   ;;
 esac
 
-# If the user has set a custom config, or sync default overrides
-# (e.g., has configured SSH for GitHub), pull those settings in
-if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]; then
-  try_source "${CONFIG_DIR}/${PROVIDER_CONFIG}"
-fi
-
-PROVIDER_DIR=${PROVIDER_DIR-${_PROVIDER_DIR}}
-GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
-
-REPO_SUBTREE=$(make_repo_subtree "${@}")
-
-REPO_SUFFIX=".git"
-
-if [[ ${NO_REPO_SUFFIX+x} == "x" ]]; then
-  REPO_SUFFIX=""
-fi
-
-GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}${REPO_SUFFIX}"
-
-if [[ "${PROVIDER_DIR:-x}" == "x" ]]; then
-  echo "Error: provider directory not set."
-  echo "Must select a predefined repository or specify one via the -r switch."
-
-  exit 2
-fi
-
-REPO_DIR=${SRC_ROOT}/${PROVIDER_DIR}/${REPO_SUBTREE}
-
-if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]; then
-  echo "Creating root source directory at ${REPO_DIR}..."
-  mkdir -p "${SRC_ROOT}"
-fi
-
-if [[ -d ${REPO_DIR} ]]; then
-  echo "Repo directory ${REPO_DIR} already exists on local machine."
-  echo "Updating local copy of repository ${GIT_REPO}..."
-
-  # TODO - these nested conditionals can be handled in a function with some
-  # finessing of the Git command input
-  if [[ ${TEST_MODE:-x} == "x" ]]; then
-    pushd "${REPO_DIR}" >/dev/null
-    ${GIT_BIN} pull
-    popd >/dev/null
+main() {
+  # If the user has set a custom config, or sync default overrides
+  # (e.g., has configured SSH for GitHub), pull those settings in
+  if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]; then
+    try_source "${CONFIG_DIR}/${PROVIDER_CONFIG}"
   fi
-else
-  echo "Repo directory ${REPO_DIR} does not exist on local machine."
-  echo "Cloning repository ${GIT_REPO}..."
 
-  if [[ ${TEST_MODE:-x} == "x" ]]; then
-    ${GIT_BIN} clone "${GIT_REPO}" "${REPO_DIR}"
+  PROVIDER_DIR=${PROVIDER_DIR-${_PROVIDER_DIR}}
+  GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
+
+  REPO_SUBTREE=$(make_repo_subtree "${@}")
+
+  REPO_SUFFIX=".git"
+
+  if [[ ${NO_REPO_SUFFIX+x} == "x" ]]; then
+    REPO_SUFFIX=""
   fi
-fi
+
+  GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}${REPO_SUFFIX}"
+
+  if [[ "${PROVIDER_DIR:-x}" == "x" ]]; then
+    echo "Error: provider directory not set."
+    echo "Must select a predefined repository or specify one via the -r switch."
+
+    exit 2
+  fi
+
+  REPO_DIR=${SRC_ROOT}/${PROVIDER_DIR}/${REPO_SUBTREE}
+
+  if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]; then
+    echo "Creating root source directory at ${REPO_DIR}..."
+    mkdir -p "${SRC_ROOT}"
+  fi
+
+  if [[ -d ${REPO_DIR} ]]; then
+    echo "Repo directory ${REPO_DIR} already exists on local machine."
+    echo "Updating local copy of repository ${GIT_REPO}..."
+
+    # TODO - these nested conditionals can be handled in a function with some
+    # finessing of the Git command input
+    if [[ ${TEST_MODE:-x} == "x" ]]; then
+      pushd "${REPO_DIR}" >/dev/null
+      ${GIT_BIN} pull
+      popd >/dev/null
+    fi
+  else
+    echo "Repo directory ${REPO_DIR} does not exist on local machine."
+    echo "Cloning repository ${GIT_REPO}..."
+
+    if [[ ${TEST_MODE:-x} == "x" ]]; then
+      ${GIT_BIN} clone "${GIT_REPO}" "${REPO_DIR}"
+    fi
+  fi
+}
+
+# TODO: split out into subfunctions
+main "$@"
 
 exit 0
