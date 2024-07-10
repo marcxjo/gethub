@@ -1,15 +1,24 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # gethub - conveniently clone/update repos in a directory tree
 #
 
+# Linting ######################################################################
+
+# Disable non-constant source because we source hooks by dir path -
+# note that hooks are enabled at user discretion
+# shellcheck disable=SC1090
+
+# Disable checking cd fail
+# We only cd to and from cloned repos, so if cd fails, we have bigger problems
+# shellcheck disable=SC2164
+
 # Variables ####################################################################
 
 GIT_BIN=$(which git 2>/dev/null)
 
-if [[ ! $GIT_BIN ]]
-then
+if [ ! "$GIT_BIN" ]; then
   echo "Error: unable to locate Git executable."
   echo "Install Git or specify a path to an existing Git binary using the GIT_BIN"
   echo "environment variable."
@@ -134,15 +143,14 @@ EOF
 try_source() {
   local _filename=${1}
 
-  if [[ -f ${_filename} ]]
-  then
-    . ${_filename}
+  if [[ -f ${_filename} ]]; then
+    . "${_filename}"
   fi
 }
 
 make_repo_subtree() {
-  local _segments=${@}
-  echo ${_segments} | sed 's| |\/|g'
+  local _segments=("${@}")
+  echo "${_segments[@]// //}"
 }
 
 # Environment overrides ########################################################
@@ -151,102 +159,98 @@ make_repo_subtree() {
 # find yourself using them often, you may as well set new defaults
 while getopts :c:hp:r:tv: o; do
   case "$o" in
-    c) # Custom repo config
-      PROVIDER_CONFIG=${OPTARG}
+  c) # Custom repo config
+    PROVIDER_CONFIG=${OPTARG}
 
-      ;;
-    h) # Heeeeeelp!
-      usage
+    ;;
+  h) # Heeeeeelp!
+    usage
 
-      exit 0
-      ;;
-    p) # Set (or override) provider directory
-      PROVIDER_DIR=${OPTARG}
+    exit 0
+    ;;
+  p) # Set (or override) provider directory
+    PROVIDER_DIR=${OPTARG}
 
-      ;;
-    r) # Override root source dir
-      SRC_ROOT=${OPTARG}
+    ;;
+  r) # Override root source dir
+    SRC_ROOT=${OPTARG}
 
-      ;;
-    t) # Test mode - prints all messages without running any file I/O executions
-      TEST_MODE="1"
-      echo "Running in test mode - no syncing will occur"
+    ;;
+  t) # Test mode - prints all messages without running any file I/O executions
+    TEST_MODE="1"
+    echo "Running in test mode - no syncing will occur"
 
-      ;;
-    v) # Custom Git provider
-      GIT_PROVIDER_URL="${OPTARG}/"
+    ;;
+  v) # Custom Git provider
+    GIT_PROVIDER_URL="${OPTARG}/"
 
-      ;;
-    *)
-      # Don't shift away the current option - it is most likely an input for the
-      # next loop
-      _LOOP_1_OFFSET=2
+    ;;
+  *)
+    # Don't shift away the current option - it is most likely an input for the
+    # next loop
+    _LOOP_1_OFFSET=2
 
-      break
-      ;;
+    break
+    ;;
   esac
 done
 
 LOOP_1_OFFSET=${_LOOP_1_OFFSET:-1}
-shift $(( ${OPTIND} - ${LOOP_1_OFFSET} ))
-
+shift $((OPTIND - LOOP_1_OFFSET))
 
 # Default provider configs #####################################################
 
 case "$1" in
-  -a|--arch|--abs) # Arch Linux
-    _GIT_PROVIDER_URL="https://git.archlinux.org/"
-    _PROVIDER_DIR=arch
-    PROVIDER_CONFIG=arch
+-a | --arch | --abs) # Arch Linux
+  _GIT_PROVIDER_URL="https://git.archlinux.org/"
+  _PROVIDER_DIR=arch
+  PROVIDER_CONFIG=arch
 
-    shift 1
-    ;;
-  -b|--bitbucket) # Atlassian Bitbucket
-    _GIT_PROVIDER_URL="https://bitbucket.org/"
-    _PROVIDER_DIR=bitbucket
-    PROVIDER_CONFIG=bitbucket
+  shift 1
+  ;;
+-b | --bitbucket) # Atlassian Bitbucket
+  _GIT_PROVIDER_URL="https://bitbucket.org/"
+  _PROVIDER_DIR=bitbucket
+  PROVIDER_CONFIG=bitbucket
 
-    shift 1
-    ;;
-  -g|--github) # Idk, some no-name up-and-comer...
-    _GIT_PROVIDER_URL="https://github.com/"
-    _PROVIDER_DIR=github
-    PROVIDER_CONFIG=github
+  shift 1
+  ;;
+-g | --github) # Idk, some no-name up-and-comer...
+  _GIT_PROVIDER_URL="https://github.com/"
+  _PROVIDER_DIR=github
+  PROVIDER_CONFIG=github
 
-    shift 1
-    ;;
-  -u|--aur) # Arch Linux User Repository
-    _GIT_PROVIDER_URL="https://aur.archlinux.org/"
-    _PROVIDER_DIR=aur
-    PROVIDER_CONFIG=aur
+  shift 1
+  ;;
+-u | --aur) # Arch Linux User Repository
+  _GIT_PROVIDER_URL="https://aur.archlinux.org/"
+  _PROVIDER_DIR=aur
+  PROVIDER_CONFIG=aur
 
-    shift 1
-    ;;
+  shift 1
+  ;;
 esac
 
 # If the user has set a custom config, or sync default overrides
 # (e.g., has configured SSH for GitHub), pull those settings in
-if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]
-then
-  try_source ${CONFIG_DIR}/${PROVIDER_CONFIG}
+if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]; then
+  try_source "${CONFIG_DIR}/${PROVIDER_CONFIG}"
 fi
 
 PROVIDER_DIR=${PROVIDER_DIR-${_PROVIDER_DIR}}
 GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
 
-REPO_SUBTREE=$(make_repo_subtree ${@})
+REPO_SUBTREE=$(make_repo_subtree "${@}")
 
 REPO_SUFFIX=".git"
 
-if [[ ${NO_REPO_SUFFIX+x} == "x" ]]
-then
+if [[ ${NO_REPO_SUFFIX+x} == "x" ]]; then
   REPO_SUFFIX=""
 fi
 
 GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}${REPO_SUFFIX}"
 
-if [[ "${PROVIDER_DIR:-x}" == "x" ]]
-then
+if [[ "${PROVIDER_DIR:-x}" == "x" ]]; then
   echo "Error: provider directory not set."
   echo "Must select a predefined repository or specify one via the -r switch."
 
@@ -255,10 +259,9 @@ fi
 
 REPO_DIR=${SRC_ROOT}/${PROVIDER_DIR}/${REPO_SUBTREE}
 
-if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]
-then
+if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]; then
   echo "Creating root source directory at ${REPO_DIR}..."
-  mkdir -p ${SRC_ROOT}
+  mkdir -p "${SRC_ROOT}"
 fi
 
 if [[ -d ${REPO_DIR} ]]; then
@@ -267,9 +270,8 @@ if [[ -d ${REPO_DIR} ]]; then
 
   # TODO - these nested conditionals can be handled in a function with some
   # finessing of the Git command input
-  if [[ ${TEST_MODE:-x} == "x" ]]
-  then
-    pushd ${REPO_DIR} >/dev/null
+  if [[ ${TEST_MODE:-x} == "x" ]]; then
+    pushd "${REPO_DIR}" >/dev/null
     ${GIT_BIN} pull
     popd >/dev/null
   fi
@@ -277,9 +279,8 @@ else
   echo "Repo directory ${REPO_DIR} does not exist on local machine."
   echo "Cloning repository ${GIT_REPO}..."
 
-  if [[ ${TEST_MODE:-x} == "x" ]]
-  then
-    ${GIT_BIN} clone ${GIT_REPO} ${REPO_DIR}
+  if [[ ${TEST_MODE:-x} == "x" ]]; then
+    ${GIT_BIN} clone "${GIT_REPO}" "${REPO_DIR}"
   fi
 fi
 
