@@ -183,7 +183,7 @@ while getopts :c:hp:r:tv: o; do
 
     ;;
   v) # Custom Git provider
-    GIT_PROVIDER_URL="${OPTARG}/"
+    GIT_PROVIDER_URL="${OPTARG%/}/"
 
     ;;
   *)
@@ -232,6 +232,8 @@ case "$1" in
   ;;
 esac
 
+################################################################################
+
 main() {
   # If the user has set a custom config, or sync default overrides
   # (e.g., has configured SSH for GitHub), pull those settings in
@@ -243,14 +245,13 @@ main() {
   GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
 
   REPO_SUBTREE=$(make_repo_subtree "${@}")
-
   REPO_SUFFIX=".git"
 
   if [[ ${NO_REPO_SUFFIX+x} == "x" ]]; then
     REPO_SUFFIX=""
   fi
 
-  GIT_REPO="${GIT_PROVIDER_URL}${REPO_SUBTREE}${REPO_SUFFIX}"
+  GIT_REPO="${GIT_PROVIDER_URL%/}/${REPO_SUBTREE}${REPO_SUFFIX}"
 
   if [[ "${PROVIDER_DIR:-x}" == "x" ]]; then
     echo "Error: provider directory not set."
