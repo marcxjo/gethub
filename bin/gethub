@@ -149,8 +149,9 @@ try_source() {
 }
 
 make_repo_subtree() {
-  local _segments=("${@}")
-  echo "${_segments[@]// //}"
+  local _segments="${*}"
+
+  echo "${_segments// //}"
 }
 
 # Environment overrides ########################################################
