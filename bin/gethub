@@ -274,9 +274,7 @@ main() {
     # TODO - these nested conditionals can be handled in a function with some
     # finessing of the Git command input
     if [[ ${TEST_MODE:-x} == "x" ]]; then
-      pushd "${REPO_DIR}" >/dev/null
-      ${GIT_BIN} pull
-      popd >/dev/null
+      GIT_DIR="${REPO_DIR}/.git" ${GIT_BIN} pull
     fi
   else
     echo "Repo directory ${REPO_DIR} does not exist on local machine."
