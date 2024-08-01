@@ -16,7 +16,9 @@
 
 # Variables ####################################################################
 
-GIT_BIN=$(which git 2>/dev/null)
+declare -r SCRIPT_NAME=${0##*/}
+
+declare -r GIT_BIN="${GIT_CMD:-$(which git 2>/dev/null)}"
 
 if [ ! "$GIT_BIN" ]; then
   echo "Error: unable to locate Git executable."
@@ -26,14 +28,15 @@ if [ ! "$GIT_BIN" ]; then
   exit 1
 fi
 
-CONFIG_DIR=${GETHUB_CONFIG_DIR:-"${HOME}/.config/gethub"}
-SRC_ROOT=${GETHUB_SRC_ROOT:-"${HOME}/.local/src"}
+declare -r CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
+declare -r CONFIG_DIR=${GETHUB_CONFIG_DIR:-"${CONFIG_HOME}/gethub"}
+declare -r SRC_ROOT=${GETHUB_SRC_ROOT:-"${HOME}/.local/src"}
 
 # If test mode is specified, then don't clone or update
 # Just print the text output to demonstrate the resulting behavior
 TEST_MODE=""
 
-# Functions ####################################################################
+# TFM ##########################################################################
 
 usage() {
   cat <<EOF
@@ -140,13 +143,27 @@ usage() {
 EOF
 }
 
-try_source() {
-  local _filename=${1}
+# Functions ####################################################################
 
-  if [[ -f ${_filename} ]]; then
-    . "${_filename}"
+join_array() {
+  declare -r _delimiter=("$1")
+  declare -ar _segments=("${@:2}")
+
+  if [[ ${#@} -lt 2 ]]; then
+    echo ""
+    return
   fi
+
+  IFS="$_delimiter" echo "${_segments[*]}"
 }
+
+build_url() {
+  declare -ar _path_segments=("$@")
+
+  join_array '/' "${_path_segments[@]}"
+}
+
+
 
 make_repo_subtree() {
   local _segments="${*}"
@@ -154,87 +171,13 @@ make_repo_subtree() {
   echo "${_segments// //}"
 }
 
-# Environment overrides ########################################################
-
-# The directory structure overrides are provided for convenience, but if you
-# find yourself using them often, you may as well set new defaults
-while getopts :c:hp:r:tv: o; do
-  case "$o" in
-  c) # Custom repo config
-    PROVIDER_CONFIG=${OPTARG}
-
-    ;;
-  h) # Heeeeeelp!
-    usage
-
-    exit 0
-    ;;
-  p) # Set (or override) provider directory
-    PROVIDER_DIR=${OPTARG}
-
-    ;;
-  r) # Override root source dir
-    SRC_ROOT=${OPTARG}
-
-    ;;
-  t) # Test mode - prints all messages without running any file I/O executions
-    TEST_MODE="1"
-    echo "Running in test mode - no syncing will occur"
-
-    ;;
-  v) # Custom Git provider
-    GIT_PROVIDER_URL="${OPTARG%/}/"
-
-    ;;
-  *)
-    # Don't shift away the current option - it is most likely an input for the
-    # next loop
-    _LOOP_1_OFFSET=2
-
-    break
-    ;;
-  esac
-done
-
-LOOP_1_OFFSET=${_LOOP_1_OFFSET:-1}
-shift $((OPTIND - LOOP_1_OFFSET))
-
-# Default provider configs #####################################################
-
-case "$1" in
--a | --arch | --abs) # Arch Linux
-  _GIT_PROVIDER_URL="https://git.archlinux.org/"
-  _PROVIDER_DIR=arch
-  PROVIDER_CONFIG=arch
-
-  shift 1
-  ;;
--b | --bitbucket) # Atlassian Bitbucket
-  _GIT_PROVIDER_URL="https://bitbucket.org/"
-  _PROVIDER_DIR=bitbucket
-  PROVIDER_CONFIG=bitbucket
-
-  shift 1
-  ;;
--g | --github) # Idk, some no-name up-and-comer...
-  _GIT_PROVIDER_URL="https://github.com/"
-  _PROVIDER_DIR=github
-  PROVIDER_CONFIG=github
-
-  shift 1
-  ;;
--u | --aur) # Arch Linux User Repository
-  _GIT_PROVIDER_URL="https://aur.archlinux.org/"
-  _PROVIDER_DIR=aur
-  PROVIDER_CONFIG=aur
-
-  shift 1
-  ;;
-esac
-
 ################################################################################
 
 main() {
+  local -r _provider_root="$1"
+  # Technically it could be an org or project group,
+  # but I can't think of a better name to cover these cases
+  local -r _provider_user="$2"
   # If the user has set a custom config, or sync default overrides
   # (e.g., has configured SSH for GitHub), pull those settings in
   if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]; then
