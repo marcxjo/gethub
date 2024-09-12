@@ -16,24 +16,9 @@
 
 # Variables ####################################################################
 
-GIT_BIN=$(which git 2>/dev/null)
-
-if [ ! "$GIT_BIN" ]; then
-  echo "Error: unable to locate Git executable."
-  echo "Install Git or specify a path to an existing Git binary using the GIT_BIN"
-  echo "environment variable."
-
-  exit 1
-fi
-
 CONFIG_DIR=${GETHUB_CONFIG_DIR:-"${HOME}/.config/gethub"}
-SRC_ROOT=${GETHUB_SRC_ROOT:-"${HOME}/.local/src"}
 
-# If test mode is specified, then don't clone or update
-# Just print the text output to demonstrate the resulting behavior
-TEST_MODE=""
-
-# Functions ####################################################################
+# TFM ##########################################################################
 
 usage() {
   cat <<EOF
@@ -41,252 +26,128 @@ usage() {
   ${0##*/} - A Convenient Git Repository Syncing Tool
 
   Usage:
-    ${0##*/} [ CONFIG_OPTIONS | PROVIDER_OPT ] REPO_TREE
+    ${0##*/} [ CLONE_OPTIONS -- ] REPO_TREE
 
+  Parameters:
 
-  CONFIG_OPTIONS
-
-  -c GIT_PROVIDER_CONFIG
-    Use an alternate repo config to configure the repo sync settings. In
-    the current implementation, .conf files are simple and contain at most two
-    variables: GIT_PROVIDER_URL and PROVIDER_DIR (both explained below).
-
-    .conf files are assumed to live in the repo config directory (which can be
-    overridden by passing the variable CONFIG_DIR into the script). On all
-    systems, this currently defaults to \${HOME}/.config.
-
-    This option assumes that the file suffix is not passed as part of the
-    argument. When using the default config directory for Linux, passing
-    \`-c foo\` sources \${HOME}/.config/gethub/foo.conf.
-
-  -g GIT_PROVIDER_URL
-    Configure the Git provider URL if not sourcing a repo config.
-    (It's probably just easier to create a repo config file, but this option is
-    included for convenience/testing/accommodating your masochism).
-
-  -p PROVIDER_DIR
-    Set an alternate provider directory directory (under the source root) for
-    the repo to be synced. By default, the provider directory is the directory
-    is the directory into which all repos for a specific Git provider are
-    grouped. (E.g., the default prefix for GitHub repos, is \`github\`).
-
-    This is useful in case you have a use case that, for whatever reason,
-    necessitates having access to an alternate copy of a Git repo.
-    Passing \`-r github-2\` will create the repo tree under
-    \${SRC_ROOT}/github-2.
-
-  -r SRC_ROOT
-    Set an alternate source root directory for the repo to be synced. The source
-    root is the top several segments of the path under which all repos synced
-    with \`${0##*/}\`, are synced. The default varies by OS, but as an example,
-    the source root defaults to ${HOME}/.local/src on Linux.
-
-    This is available in case you're running \`${0##*/}\` in an environment
-    where you don't have permission to change the default source root.
-
-  -t
-    Run \`${0##*/}\` in test mode. In this mode, all messages logged in the
-    default run mode are shown for debugging purposes, but no syncing occurs.
-
-
-  PROVIDER_OPT
-
-    \`${0##*/}\` ships with a few major Git providers preconfigured as shell
-    options. When passing these options, the only other required parameters are
-    the URL path segments not included in the root provider URL (see REPO_TREE).
-
-    Passing a default provider option also sets a default provider directory. To
-    override the provider directory or even the root provider URL (e.g., to
-    substitute in an SSH host definition), you can create a .conf file with the
-    same name as the provider's default prefix.
-
-    If you want to override GitHub's root URL, create
-    \${HOME}/.config/github.conf with a populated GIT_PROVIDER_URL. (If you
-    don't want to override its provider directory, simply don't set a
-    PROVIDER_DIR in the file.) To clone or pull a GitHub repo, invoke the script
-    normally, passing the \`-g\` flag; you don't need to pass the \`-c\` flag.
-    Your overrides file will be picked up and applied with your overrides
-    configured.
-
-    -a|--arch|--abs
-      Assumes an Arch Linx official svntogit PKGBUILD directory will be synced
-      via Git. The default provider directory is \`arch\`.
-
-      NOTE: This option is very likely broken at the moment, as Arch Linux has
-      recently migrated all build scripts to GitHub. Use Arch's \`asp\` package
-      as a workaround for the meantime if this option fails for you. (Using
-      \`-g\` will probably not work, given the architecture of the svntogit
-      repo.)
-
-    -b|--bitbucket
-      Assumes a Bitbucket repo will be synced. The default provider directory is
-      \`bitbucket\`.
-
-    -g|--github
-      Assumes a GitHub repo will be synced. The default provider directory is
-      \`github\`.
-
-    -u|--aur
-      Assumes a repo from Arch Linux's Arch User Repository repo will be synced.
-      The default provider directory is \`aur\`.
-
+  CLONE_OPTIONS
+      The command-line options which would normally be passed to the `git clone`
+	  command. These options are forwarded to `git clone` without alteration.
 
   REPO_TREE
-     The space-separated collection of subpaths in the repo's URL (excluding the
-     Git provider's base href). For a GitHub URL, this is usually a collection
-     of 2 strings: the repo's username and the repo name itself. The \`.git\`
-     prefix should be excluded from the final argument.
+      The space-separated collection of subpaths in the repo's URL (excluding the
+      Git provider's base href). For a GitHub URL, this is usually a collection
+      of 2 strings: the repo's username and the repo name itself. The \`.git\`
+      prefix should be excluded from the final argument.
 
 EOF
 }
 
-try_source() {
-  local _filename=${1}
+# Functions ####################################################################
 
-  if [[ -f ${_filename} ]]; then
-    . "${_filename}"
-  fi
+join_array() {
+  local -r _delimiter="$1"
+  local -ra _arr=("${@:2}")
+
+  (
+    IFS="$_delimiter"
+    echo "${_arr[*]}"
+  )
 }
 
-make_repo_subtree() {
-  local _segments="${*}"
+build_path() {
+  local -ar _segments=("$@")
 
-  echo "${_segments// //}"
+  # HACK - overwriting a global variable with a local one
+  # Any cleaner way I can find to do this is also unnecessarily verbose
+  join_array '/' "${_segments[@]}"
 }
 
-# Environment overrides ########################################################
+get_index() {
+  local -r _needle="$1"
 
-# The directory structure overrides are provided for convenience, but if you
-# find yourself using them often, you may as well set new defaults
-while getopts :c:hp:r:tv: o; do
-  case "$o" in
-  c) # Custom repo config
-    PROVIDER_CONFIG=${OPTARG}
+  [[ -z "$_needle" ]] &&
+    echo -1 &&
+    return 1
 
-    ;;
-  h) # Heeeeeelp!
-    usage
+  local -r _haystack=("${@:2}")
 
-    exit 0
-    ;;
-  p) # Set (or override) provider directory
-    PROVIDER_DIR=${OPTARG}
+  [[ ${#_haystack[@]} -le 0 ]] &&
+    echo -1 &&
+    return 1
 
-    ;;
-  r) # Override root source dir
-    SRC_ROOT=${OPTARG}
+  for x in "${!_haystack[@]}"; do
+    if [[ "${_haystack[$x]}" = "$_needle" ]]; then
+      echo "$x"
+      return
+    fi
+  done
 
-    ;;
-  t) # Test mode - prints all messages without running any file I/O executions
-    TEST_MODE="1"
-    echo "Running in test mode - no syncing will occur"
+  echo -1
+  return 1
+}
 
-    ;;
-  v) # Custom Git provider
-    GIT_PROVIDER_URL="${OPTARG%/}/"
+get_provider_property() {
+  local -r _provider_id="$1"
+  local -r _property_name="$2"
 
-    ;;
-  *)
-    # Don't shift away the current option - it is most likely an input for the
-    # next loop
-    _LOOP_1_OFFSET=2
+  git config -f ${CONFIG_DIR}/config --get "provider.${_provider_id}.${_property_name}"
+}
 
-    break
-    ;;
-  esac
-done
+build_repo_directory_path() {
+  local -r _provider_id="$1"
+  local -r _repo_subtree="$2"
 
-LOOP_1_OFFSET=${_LOOP_1_OFFSET:-1}
-shift $((OPTIND - LOOP_1_OFFSET))
+  local -r _root_path="$(get_provider_property "${_provider_id}" 'rootPath')"
+  local -r _repo_dir="${_root_path}/${_subtree}"
 
-# Default provider configs #####################################################
+  echo "$_repo_dir"
+}
 
-case "$1" in
--a | --arch | --abs) # Arch Linux
-  _GIT_PROVIDER_URL="https://git.archlinux.org/"
-  _PROVIDER_DIR=arch
-  PROVIDER_CONFIG=arch
+build_repo_url() {
+  local -r _provider_id="$1"
+  local -r _repo_subtree="$2"
 
-  shift 1
-  ;;
--b | --bitbucket) # Atlassian Bitbucket
-  _GIT_PROVIDER_URL="https://bitbucket.org/"
-  _PROVIDER_DIR=bitbucket
-  PROVIDER_CONFIG=bitbucket
+  local -r _root_url="$(get_provider_property "${_provider_id}" 'rootUrl')"
+  local -r _repo_suffix="$(get_provider_property "${_provider_id}" 'gitSuffix')"
+  local -r _repo_url="${_root_url}${_subtree}${_repo_suffix}"
 
-  shift 1
-  ;;
--g | --github) # Idk, some no-name up-and-comer...
-  _GIT_PROVIDER_URL="https://github.com/"
-  _PROVIDER_DIR=github
-  PROVIDER_CONFIG=github
-
-  shift 1
-  ;;
--u | --aur) # Arch Linux User Repository
-  _GIT_PROVIDER_URL="https://aur.archlinux.org/"
-  _PROVIDER_DIR=aur
-  PROVIDER_CONFIG=aur
-
-  shift 1
-  ;;
-esac
+  echo "$_repo_url"
+}
 
 ################################################################################
 
 main() {
-  # If the user has set a custom config, or sync default overrides
-  # (e.g., has configured SSH for GitHub), pull those settings in
-  if [[ "${PROVIDER_CONFIG:+x}" == "x" ]]; then
-    try_source "${CONFIG_DIR}/${PROVIDER_CONFIG}"
+  local -ri _opts_separator_index=$(get_index '--' "$@")
+  local -ri _opts_offset=$((_opts_separator_index + 1))
+
+  local -a _git_clone_opts
+
+  if [[ $_opts_separator_index -gt 0 ]]; then
+    _git_clone_opts=("${@:1:${_opts_offset}}")
   fi
 
-  PROVIDER_DIR=${PROVIDER_DIR-${_PROVIDER_DIR}}
-  GIT_PROVIDER_URL=${GIT_PROVIDER_URL-${_GIT_PROVIDER_URL}}
+  shift $_opts_offset
 
-  REPO_SUBTREE=$(make_repo_subtree "${@}")
-  REPO_SUFFIX=".git"
+  [[ -r ${HOME}/.config/gethub/providers ]] &&
+    . "${HOME}/.config/gethub/providers"
 
-  if [[ ${NO_REPO_SUFFIX+x} == "x" ]]; then
-    REPO_SUFFIX=""
-  fi
+  local -r _provider="${GIT_PROVIDERS[$1]:-$1}"
+  local -ra _path_segments=("${@:2}")
 
-  GIT_REPO="${GIT_PROVIDER_URL%/}/${REPO_SUBTREE}${REPO_SUFFIX}"
+  local -r _subtree="$(build_path "${_path_segments[@]}")"
 
-  if [[ "${PROVIDER_DIR:-x}" == "x" ]]; then
-    echo "Error: provider directory not set."
-    echo "Must select a predefined repository or specify one via the -r switch."
+  local -r _repo_dir="$(build_repo_directory_path "$_provider" "$_subtree")"
+  local -r _repo_url="$(build_repo_url "$_provider" "$_subtree")"
 
-    exit 2
-  fi
-
-  REPO_DIR=${SRC_ROOT}/${PROVIDER_DIR}/${REPO_SUBTREE}
-
-  if [[ ! -d ${SRC_ROOT} && ${TEST_MODE:-x} == "x" ]]; then
-    echo "Creating root source directory at ${REPO_DIR}..."
-    mkdir -p "${SRC_ROOT}"
-  fi
-
-  if [[ -d ${REPO_DIR} ]]; then
-    echo "Repo directory ${REPO_DIR} already exists on local machine."
-    echo "Updating local copy of repository ${GIT_REPO}..."
-
-    # TODO - these nested conditionals can be handled in a function with some
-    # finessing of the Git command input
-    if [[ ${TEST_MODE:-x} == "x" ]]; then
-      GIT_DIR="${REPO_DIR}/.git" ${GIT_BIN} pull
-    fi
+  if [[ -d ${_repo_dir} ]]; then
+    echo "Updating repository at ${_repo_dir}..."
+    GIT_DIR="${_repo_dir}/.git" git pull
   else
-    echo "Repo directory ${REPO_DIR} does not exist on local machine."
-    echo "Cloning repository ${GIT_REPO}..."
-
-    if [[ ${TEST_MODE:-x} == "x" ]]; then
-      ${GIT_BIN} clone "${GIT_REPO}" "${REPO_DIR}"
-    fi
+    git clone "${_git_clone_opts[@]}" "${_repo_url}" "${_repo_dir}"
   fi
 }
 
-# TODO: split out into subfunctions
 main "$@"
 
 exit 0
